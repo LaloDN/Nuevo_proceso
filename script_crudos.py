@@ -112,12 +112,14 @@ def main():
     root = os.path.dirname(os.path.realpath(__file__))
     
     parser = argparse.ArgumentParser(description='Script para filtrar datos leidos de un sensor')
-    parser.add_argument('--ruta_archivos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos'),help='Ruta con los archivos .json a procesar')
-    parser.add_argument('--ruta_buenos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Buenos_wireless'),help='Ruta de la carpeta hacía donde se van a mover los archivos .json válidos')
-    parser.add_argument('--ruta_malos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Errores_wireless'),help='Ruta de la carpeta hacía dodne se van a mover los archivos .json con errores en la lectura')
-    parser.add_argument('--ruta_warning',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Warning_wireless'),help='Ruta de la carpeta hacía donde se van a mover los archivos .json con errores en la lógica')
+    parser.add_argument('--ruta_archivos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos'),help='Ruta con los archivos .txt a procesar')
+    parser.add_argument('--ruta_buenos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Buenos_wireless'),help='Ruta de la carpeta hacía donde se van a mover los archivos .txt válidos')
+    parser.add_argument('--ruta_malos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Errores_wireless'),help='Ruta de la carpeta hacía dodne se van a mover los archivos .txt con errores en la lectura')
+    parser.add_argument('--ruta_warning',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Warning_wireless'),help='Ruta de la carpeta hacía donde se van a mover los archivos .txt con errores en la lógica')
     parser.add_argument('--ruta_output',type=str,nargs='?',const=1,default=root,help='Ruta de la carpeta en donde se generarán los csv y el ouput de los logs')
     args=parser.parse_args()
+    if not os.path.exists(args.ruta_output):
+        os.mkdir(args.ruta_output)
     
     logging.basicConfig(filename=os.path.join(args.ruta_output,"app.log"),level="DEBUG")
     #Creamos el archivo de log con los archivos leidos
