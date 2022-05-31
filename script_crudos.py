@@ -10,17 +10,16 @@ from dateutil.parser import parse
 from utils import getDistance, getEnvironVar, slackMessage, formatId
 
 
-#region Variables de log globales y root
+#region Variables de log globales
 buen=0
 buenos='\n'
 mal=0
 malos='\n'
 war=0
 warning='\n'
-root = os.path.dirname(os.path.realpath(__file__))
 #endregion
 
-def crudosWireless(file: str, user_db: str ,password_db: str) -> None:
+def crudosWireless(file: str, user_db: str ,password_db: str,args: any) -> None:
     """ Funcion para extraer los datos de los archivos que terminen con _wireless"""
     #region variables
     global buen
@@ -29,10 +28,9 @@ def crudosWireless(file: str, user_db: str ,password_db: str) -> None:
     global malos
     global war
     global warning
-    global root
     #endregion
     try:
-        with open(os.path.join(root,'Archivos',file)) as f:
+        with open(os.path.join(args.ruta_archivos,file)) as f:
 
             #region Pre-proceso
             jsArch=json.load(f)
@@ -62,15 +60,15 @@ def crudosWireless(file: str, user_db: str ,password_db: str) -> None:
                 logging.warning('ATENCIÓN: Aún no ha creado un registro zona ligado al nodo '+mac_address+' dentro de la base de datos.')
                 war+=1
                 warning+=file+'\n'
-                if not os.path.exists(os.path.join(root,'Archivos','Warning_wireless')):
-                    os.mkdir(os.path.join(root,'Archivos','Warning_wireless'))
-                shutil.move(os.path.join(root,'Archivos',file),os.path.join(root,'Archivos','Warning_wireless'))
+                if not os.path.exists(args.ruta_warning):
+                    os.mkdir(args.ruta_warning)
+                shutil.move(os.path.join(args.ruta_archivos,file),args.ruta_warning)
             else:
                 #Csv con columnas    
                 now=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                if not os.path.exists(os.path.join(root,now+'.csv')):
+                if not os.path.exists(os.path.join(args.ruta_output,now+'.csv')):
                     df=pd.DataFrame(columns=['id','mac_dispositivo','dispositivo_idd','mac_nodo','potencia','potencia_porcentaje','distancia','created','updated','zona_id','modified','distancia2','en_horario'])
-                    df.to_csv(os.path.join(root,now+'.csv'),index=False)
+                    df.to_csv(os.path.join(args.ruta_output,now+'.csv'),index=False)
 
                 for reg in jsArch['wifi_bt_data']['records']:
                     date_from=reg['from']
@@ -85,12 +83,12 @@ def crudosWireless(file: str, user_db: str ,password_db: str) -> None:
                         distancia=getDistance(potencia)
             
                         df=pd.DataFrame({'id':'null','mac_dispositivo':id,'dispositivo_idd':idd,'mac_nodo':mac_address,'potencia':potencia,'potencia_porcentaje':potencia_p,'distancia':distancia,'created':fecha.strftime('%Y-%m-%d'),'updated':fecha.strftime('%H:%M:%S'),'zona_id':zona,'modified':fecha.strftime('%Y-%m-%d %H:%M:%S'),'distancia2':0,'en_horario':1},index=[0])
-                        df.to_csv(os.path.join(root,now+'.csv'),mode='a',header=False,index=False)
+                        df.to_csv(os.path.join(args.ruta_output,now+'.csv'),mode='a',header=False,index=False)
                 
                 #region Archivo valido
-                if not os.path.exists(os.path.join(root,'Archivos','Buenos_wireless')):
-                    os.mkdir(os.path.join(root,'Archivos','Buenos_wireless'))
-                shutil.move(os.path.join(root,'Archivos',file),os.path.join(root,'Archivos','Buenos_wireless'))                
+                if not os.path.exists(args.ruta_buenos):
+                    os.mkdir(args.ruta_buenos)
+                shutil.move(os.path.join(args.ruta_archivos,file),args.ruta_buenos)                
                 buen+=1
                 buenos+=file+'\n'
                 #endregion
@@ -101,30 +99,44 @@ def crudosWireless(file: str, user_db: str ,password_db: str) -> None:
         malos+=file+'\n'
         logging.critical(e)
         #Error en la lectura
-        if not os.path.exists(os.path.join(root,'Archivos','Errores_wireless')):
-                os.mkdir(os.path.join(root,'Archivos','Errores_wireless'))
-        shutil.move(os.path.join(root,'Archivos',file),os.path.join(root,'Archivos','Errores_wireless'))
+        if not os.path.exists(args.ruta_malos):
+                os.mkdir(args.ruta_malos)
+        shutil.move(os.path.join(args.ruta_malos,file),args.ruta_malos)
 
        
 def main():
+    
+    
     #region Ajustes previos
+    
+    root = os.path.dirname(os.path.realpath(__file__))
+    
     parser = argparse.ArgumentParser(description='Script para filtrar datos leidos de un sensor')
-    parser.parse_args()
-    logging.basicConfig(filename=os.path.join(root,"app.log"),level="DEBUG")
+    parser.add_argument('--ruta_archivos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos'),help='Ruta con los archivos .json a procesar')
+    parser.add_argument('--ruta_buenos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Buenos_wireless'),help='Ruta de la carpeta hacía donde se van a mover los archivos .json válidos')
+    parser.add_argument('--ruta_malos',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Errores_wireless'),help='Ruta de la carpeta hacía dodne se van a mover los archivos .json con errores en la lectura')
+    parser.add_argument('--ruta_warning',type=str,nargs='?',const=1,default=os.path.join(root,'Archivos','Warning_wireless'),help='Ruta de la carpeta hacía donde se van a mover los archivos .json con errores en la lógica')
+    parser.add_argument('--ruta_output',type=str,nargs='?',const=1,default=root,help='Ruta de la carpeta en donde se generarán los csv y el ouput de los logs')
+    args=parser.parse_args()
+    
+    logging.basicConfig(filename=os.path.join(args.ruta_output,"app.log"),level="DEBUG")
     #Creamos el archivo de log con los archivos leidos
     logging.info('\n\n---------------------------------\nHora de ejecución:'+ datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     #endregion
    
     #region Variables 
-    root
     #user=getEnvironVar('MYSQL_USER')
     #password=getEnvironVar('MYSQL_PASSWORD')
     user='eddy'
     password='SYdhtW8C8b%Vig'
 
     #endregion
+    if not os.path.exists(args.ruta_archivos):
+        print('Error: Al parecer no existe la ruta '+args.ruta_archivos+' con los archivos a leer, intente revisar la ruta o crear el directorio de manera manual')
+        logging.info('\nFin de la ejecución '+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+'\n---------------------------------\n')
+        quit()
     
-    [crudosWireless(file,user,password) for file in os.listdir(os.path.join(root,'Archivos')) if file.endswith('_wireless.txt') or file.endswith('_wifi.txt')]
+    [crudosWireless(file,user,password,args) for file in os.listdir(args.ruta_archivos) if file.endswith('_wireless.txt') or file.endswith('_wifi.txt')]
 
 
     #region Reporte de logs
